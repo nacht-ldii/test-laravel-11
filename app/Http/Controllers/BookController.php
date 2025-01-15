@@ -14,12 +14,25 @@ class BookController extends Controller
         return view('layouts.table-example');
     }
 
-    public function fetchBooks()
+    public function fetchBooks(Request $request)
     {
-        $books = Book::with('category')->get();
+        $query = Book::query()->with('category');
+    
+        // Filter by category
+        if ($request->has('category') && $request->category) {
+            $query->where('kategori_id', $request->category);
+        }
+    
+        // Search by title
+        if ($request->has('search') && $request->search) {
+            $query->where('judul', 'like', '%' . $request->search . '%');
+        }
+    
+        $books = $query->get();
+    
         return response()->json(['data' => $books]);
     }
-    public function store(Request $request)
+        public function store(Request $request)
     {
         $request->validate([
             'judul' => 'required',

@@ -83,117 +83,153 @@
 
 @push('scripts')
 <script>
-    $(document).ready(function () {
-        $.ajaxSetup({
-            headers: {
-                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+$(document).ready(function () {
+    $.ajaxSetup({
+        headers: {
+            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+        }
+    });
+
+    fetchCategories();
+
+    // Fetch all categories and populate the table
+    function fetchCategories() {
+        $.ajax({
+            url: '/categories/fetch',
+            method: 'GET',
+            success: function (response) {
+                let rows = '';
+                response.data.forEach((category, index) => {
+                    rows += `
+                        <tr>
+                            <td>${index + 1}</td>
+                            <td>${category.name}</td>
+                            <td>
+                                <button class="btn btn-warning btn-sm editCategory" data-id="${category.id}" data-name="${category.name}">Edit</button>
+                                <button class="btn btn-danger btn-sm deleteCategory" data-id="${category.id}">Delete</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                $('#categoryTable tbody').html(rows);
+            },
+        });
+    }
+
+    // Show Create Modal
+    $('#createCategoryButton').click(function () {
+        $('#createForm')[0].reset();
+        $('#createModal').modal('show');
+    });
+
+    // Handle Create Form Submission
+    $('#createForm').submit(function (e) {
+        e.preventDefault();
+
+        const name = $('#createName').val();
+
+        Swal.fire({
+            title: 'Processing...',
+            text: 'Please wait',
+            didOpen: () => {
+                Swal.showLoading();
+            },
+            allowOutsideClick: false,
+        });
+
+        $.ajax({
+            url: '/categories',
+            method: 'POST',
+            data: { name },
+            success: function (response) {
+                Swal.fire('Success!', 'Category created successfully.', 'success');
+                $('#createModal').modal('hide');
+                fetchCategories();
+            },
+            error: function (xhr) {
+                Swal.fire('Error!', 'Failed to create category. Check your input.', 'error');
             }
         });
+    });
 
-        fetchCategories();
+    // Show modal for editing
+    $(document).on('click', '.editCategory', function () {
+        const id = $(this).data('id');
+        const name = $(this).data('name');
 
-        // Fetch all categories and populate the table
-        function fetchCategories() {
-            $.ajax({
-                url: '/categories/fetch',
-                method: 'GET',
-                success: function (response) {
-                    let rows = '';
-                    response.data.forEach((category, index) => {
-                        rows += `
-                            <tr>
-                                <td>${index + 1}</td>
-                                <td>${category.name}</td>
-                                <td>
-                                    <button class="btn btn-warning btn-sm editCategory" data-id="${category.id}" data-name="${category.name}">Edit</button>
-                                    <button class="btn btn-danger btn-sm deleteCategory" data-id="${category.id}">Delete</button>
-                                </td>
-                            </tr>
-                        `;
-                    });
-                    $('#categoryTable tbody').html(rows);
-                },
-            });
-        }
+        $('#editCategoryId').val(id);
+        $('#editName').val(name);
 
-        // Show Create Modal
-        $('#createCategoryButton').click(function () {
-            $('#createForm')[0].reset();
-            $('#createModal').modal('show');
+        $('#editModal').modal('show');
+    });
+
+    // Handle edit form submission
+    $('#editForm').submit(function (e) {
+        e.preventDefault();
+
+        const id = $('#editCategoryId').val();
+        const name = $('#editName').val();
+
+        Swal.fire({
+            title: 'Processing...',
+            text: 'Please wait',
+            didOpen: () => {
+                Swal.showLoading();
+            },
+            allowOutsideClick: false,
         });
 
-        // Handle Create Form Submission
-        $('#createForm').submit(function (e) {
-            e.preventDefault();
-
-            const name = $('#createName').val();
-
-            $.ajax({
-                url: '/categories',
-                method: 'POST',
-                data: { name },
-                success: function (response) {
-                    alert('Category created successfully');
-                    $('#createModal').modal('hide');
-                    fetchCategories();
-                },
-                error: function (xhr) {
-                    alert('Error creating category');
-                }
-            });
+        $.ajax({
+            url: `/categories/${id}`,
+            method: 'PUT',
+            data: { name },
+            success: function (response) {
+                Swal.fire('Success!', 'Category updated successfully.', 'success');
+                $('#editModal').modal('hide');
+                fetchCategories();
+            },
+            error: function (xhr) {
+                Swal.fire('Error!', 'Failed to update category. Check your input.', 'error');
+            }
         });
+    });
 
-        // Show modal for editing
-        $(document).on('click', '.editCategory', function () {
-            const id = $(this).data('id');
-            const name = $(this).data('name');
+    // Handle delete button click
+    $(document).on('click', '.deleteCategory', function () {
+        const id = $(this).data('id');
 
-            $('#editCategoryId').val(id);
-            $('#editName').val(name);
+        Swal.fire({
+            title: 'Are you sure?',
+            text: 'You won\'t be able to revert this!',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, delete it!',
+            cancelButtonText: 'Cancel'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'Processing...',
+                    text: 'Please wait',
+                    didOpen: () => {
+                        Swal.showLoading();
+                    },
+                    allowOutsideClick: false,
+                });
 
-            $('#editModal').modal('show');
-        });
-
-        // Handle edit form submission
-        $('#editForm').submit(function (e) {
-            e.preventDefault();
-
-            const id = $('#editCategoryId').val();
-            const name = $('#editName').val();
-
-            $.ajax({
-                url: `/categories/${id}`,
-                method: 'PUT',
-                data: { name },
-                success: function (response) {
-                    alert(response.message);
-                    $('#editModal').modal('hide');
-                    fetchCategories();
-                },
-                error: function (xhr) {
-                    alert('Error updating category');
-                }
-            });
-        });
-
-        // Handle delete button click
-        $(document).on('click', '.deleteCategory', function () {
-            const id = $(this).data('id');
-
-            if (confirm('Are you sure you want to delete this category?')) {
                 $.ajax({
                     url: `/categories/${id}`,
                     method: 'DELETE',
                     success: function (response) {
-                        alert(response.message);
+                        Swal.fire('Deleted!', 'Category has been deleted.', 'success');
                         fetchCategories();
                     },
-                    error: function (xhr) {
-                        alert('Error deleting category');
+                    error: function () {
+                        Swal.fire('Error!', 'Failed to delete category.', 'error');
                     }
                 });
             }
         });
     });
+});
 </script>
 @endpush
